@@ -33,7 +33,7 @@ Store facts:
 - We sell plants, pots, fertilizers, tools, and seeds
 - Delivery is available across Peshawar
 - Payment is Cash on Delivery only
-- Shipping fee is Rs 150 per order
+- Shipping fee is Rs 250 per order
 - Customers can browse everything at /shop, or message us directly on WhatsApp for anything you can't help with
 
 Current product catalog:
