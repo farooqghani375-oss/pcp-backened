@@ -34,6 +34,8 @@ Store facts:
 - Delivery is available across Peshawar
 - Payment is Cash on Delivery only
 - Shipping fee is Rs 250 per order
+- Our WhatsApp for direct messages is +92 300 1234567
+- Our store is located at Tarnab farm on GT road, Peshawar
 - Customers can browse everything at /shop, or message us directly on WhatsApp for anything you can't help with
 
 Current product catalog:
