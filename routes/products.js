@@ -1,12 +1,18 @@
 import { Router } from 'express'
 import { pool } from '../db.js'
+import { cloudinary, upload } from '../cloudinary.js'
+
+function generateSlug(name) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+}
 
 const router = Router()
 
-// Helper: given a list of product rows, fetch their images/colors
-// and attach them as arrays -- this is us doing in JavaScript what
-// Firestore did automatically (a product object with images[] and
-// colors[] baked in), but now built from two separate tables.
+// Helper: attach images and colors to products
 async function attachExtras(products) {
   if (products.length === 0) return products
   const ids = products.map(p => p.id)
@@ -27,7 +33,18 @@ async function attachExtras(products) {
   }))
 }
 
-// GET /api/products -- list everything (used by Shop.jsx / Home.jsx)
+// POST /api/products/upload-image -- upload single image to Cloudinary
+router.post('/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No image provided' })
+    res.json({ url: req.file.path })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Image upload failed' })
+  }
+})
+
+// GET /api/products
 router.get('/', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM products ORDER BY id')
@@ -38,7 +55,22 @@ router.get('/', async (req, res) => {
   }
 })
 
-// GET /api/products/:id -- single product (used by ProductDetail.jsx)
+// GET /api/products/slug/:slug
+router.get('/slug/:slug', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT * FROM products WHERE slug = $1', [req.params.slug]
+    )
+    if (rows.length === 0) return res.status(404).json({ error: 'Product not found' })
+    const [product] = await attachExtras(rows)
+    res.json(product)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Failed to fetch product' })
+  }
+})
+
+// GET /api/products/:id
 router.get('/:id', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id])
@@ -51,7 +83,7 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-// POST /api/products -- create (used by Admin.jsx)
+// POST /api/products
 router.post('/', async (req, res) => {
   const {
     name, price, category, description,
@@ -64,11 +96,13 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const { rows } = await pool.query(
-      `INSERT INTO products (name, price, category, description, featured, in_stock, stock_qty)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [name, price, category, description, featured, inStock, stockQty]
-    )
+    const slug = generateSlug(name)
+   const { rows } = await pool.query(
+  `INSERT INTO products (name, price, category, description, featured, in_stock, stock_qty, slug)
+   VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+  [name, price, category, description, featured, inStock, stockQty, slug]
+  )
+    
     const product = rows[0]
 
     for (const [i, url] of images.entries()) {
@@ -91,7 +125,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-// PUT /api/products/:id -- update core fields (used by Admin.jsx)
+// PUT /api/products/:id
 router.put('/:id', async (req, res) => {
   const { name, price, category, description, featured, inStock, stockQty } = req.body
   try {
@@ -109,7 +143,7 @@ router.put('/:id', async (req, res) => {
   }
 })
 
-// DELETE /api/products/:id (used by Admin.jsx)
+// DELETE /api/products/:id
 router.delete('/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM products WHERE id = $1', [req.params.id])
