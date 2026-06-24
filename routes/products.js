@@ -143,7 +143,41 @@ router.post('/', async (req, res) => {
     }
 
     const [full] = await attachExtras([product])
-    res.status(201).json(full)
+
+// Send push notification to all subscribers
+try {
+  const { rows: subs } = await pool.query('SELECT * FROM push_subscriptions')
+  if (subs.length > 0) {
+    const webpush = await import('web-push')
+    webpush.default.setVapidDetails(
+      process.env.VAPID_MAILTO,
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    )
+    const payload = JSON.stringify({
+      title: '🌿 New Product at PCP!',
+      body: `${product.name} is now available — check it out!`,
+      url: `/product/${product.slug}`,
+      icon: '/android-chrome-192x192.png',
+    })
+    await Promise.allSettled(
+      subs.map(sub =>
+        webpush.default.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          payload
+        ).catch(async err => {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            await pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1', [sub.endpoint])
+          }
+        })
+      )
+    )
+  }
+} catch (e) {
+  console.error('Push notification failed:', e)
+}
+
+res.status(201).json(full)
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Failed to create product' })
