@@ -52,20 +52,21 @@ router.post('/', async (req, res) => {
     // 2. Insert each line item (we snapshot name + price here so old
     //    orders don't change if you rename/reprice a product later)
     for (const item of items) {
-      await client.query(
-        `INSERT INTO order_items
-          (order_id, product_id, product_name, price, quantity, color)
-         VALUES ($1,$2,$3,$4,$5,$6)`,
-        [
-          order.id,
-          item.productId || null,
-          item.name,
-          item.price,
-          item.quantity,
-          item.color || null
-        ]
-      )
-    }
+  await client.query(
+    `INSERT INTO order_items
+      (order_id, product_id, product_name, price, quantity, color, size)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+    [
+      order.id,
+      item.productId || null,
+      item.name,
+      item.price,
+      item.quantity,
+      item.color || null,
+      item.size || null
+    ]
+  )
+}
 
     await client.query('COMMIT')
 
