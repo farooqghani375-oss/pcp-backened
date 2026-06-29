@@ -3,7 +3,6 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import rateLimit from 'express-rate-limit'
 import helmet from 'helmet'
-import xss from 'xss-clean'
 import productsRouter from './routes/products.js'
 import ordersRouter from './routes/orders.js'
 import authRouter from './routes/auth.js'
@@ -16,7 +15,6 @@ const app = express()
 
 // ── Security ──
 app.use(helmet())
-app.use(xss())
 app.disable('x-powered-by')
 app.use(cors({
   origin: 'https://pcp-frontend-gdqp.vercel.app',
